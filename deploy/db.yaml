@@ -8,6 +8,7 @@ spec:
   accessModes:
     - ReadWriteOnce
   storageClassName: user-db-class
+  # A hostPath volume mounts a file or directory from the host node's file system into your pod
   hostPath:
     path: "/mnt/data/user"
 ---
@@ -16,12 +17,13 @@ kind: PersistentVolumeClaim
 metadata:
   name: user-db-pvc
 spec:
+  # map to storageClassName in pv
+  storageClassName: user-db-class
   resources:
     requests:
       storage: 500Mi
   accessModes:
     - ReadWriteOnce
-  storageClassName: user-db-class
 ---
 apiVersion: v1
 kind: ConfigMap

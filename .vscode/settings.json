@@ -1,4 +1,6 @@
 {
+	"editor.lineNumbers": "on",
+	"editor.glyphMargin": false,
 	"protoc": {
 		"options": ["--proto_path=proto"]
 	}

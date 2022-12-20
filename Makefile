@@ -12,4 +12,12 @@ migratedown:
 migrateforce:
 	migrate -path db/migration -database "${DB_DSN}" -verbose force ${v}
 
-.PHONY: migratecreate migrateup migratedown migrateforce
+protogen:
+	protoc --proto_path=proto proto/*.proto \
+	--go_out=pb --go_opt=paths=source_relative \
+	--go-grpc_out=pb --go-grpc_opt=paths=source_relative
+
+sqlcgen:
+	sqlc generate
+
+.PHONY: migratecreate migrateup migratedown migrateforce protogen
