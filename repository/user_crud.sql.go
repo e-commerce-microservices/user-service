@@ -27,3 +27,68 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	_, err := q.db.ExecContext(ctx, createUser, arg.Email, arg.UserName, arg.HashedPassword)
 	return err
 }
+
+const getAllUser = `-- name: GetAllUser :many
+SELECT id, email, user_name, role, active_status, hashed_password, password_updated_at, created_at FROM "user"
+`
+
+func (q *Queries) GetAllUser(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUser)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.UserName,
+			&i.Role,
+			&i.ActiveStatus,
+			&i.HashedPassword,
+			&i.PasswordUpdatedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, user_name, role, active_status, hashed_password, password_updated_at, created_at FROM "user" WHERE email = $1  LIMIT 1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.UserName,
+		&i.Role,
+		&i.ActiveStatus,
+		&i.HashedPassword,
+		&i.PasswordUpdatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const registerSupplier = `-- name: RegisterSupplier :exec
+UPDATE "user" SET "role" = 'supplier' WHERE "id" = $1
+`
+
+func (q *Queries) RegisterSupplier(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, registerSupplier, id)
+	return err
+}

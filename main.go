@@ -12,6 +12,7 @@ import (
 	"github.com/e-commerce-microservices/user-service/service"
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 
 	// postgres driver
@@ -40,8 +41,16 @@ func main() {
 	// init user queries
 	userQueries := repository.New(userDB)
 
+	// dial auth client
+	authServiceConn, err := grpc.Dial("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatal("can't dial user service: ", err)
+	}
+	// create auth client
+	authClient := pb.NewAuthServiceClient(authServiceConn)
+
 	// create user service
-	userService := service.NewUserService(userQueries)
+	userService := service.NewUserService(userQueries, authClient)
 	// register user service
 	pb.RegisterUserServiceServer(grpcServer, userService)
 
