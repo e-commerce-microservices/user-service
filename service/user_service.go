@@ -109,3 +109,11 @@ func (user *UserService) SupplierRegister(ctx context.Context, _ *empty.Empty) (
 		Message: "successfully, now you are supplier",
 	}, nil
 }
+
+// Ping pong
+func (user *UserService) Ping(context.Context, *empty.Empty) (*pb.Pong, error) {
+	return &pb.Pong{
+		Message: "pong",
+	}, nil
+
+}

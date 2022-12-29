@@ -71,7 +71,6 @@ kind: Service
 metadata:
   name: user-db
 spec:
-  type: NodePort
   selector:
     app: user-db
   ports:

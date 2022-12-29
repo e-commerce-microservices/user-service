@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 
 	"github.com/e-commerce-microservices/user-service/pb"
@@ -38,11 +39,16 @@ func main() {
 		log.Fatal("can't ping to user db", err)
 	}
 
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("pong"))
+	})
+	http.ListenAndServe(":8080", nil)
+
 	// init user queries
 	userQueries := repository.New(userDB)
 
 	// dial auth client
-	authServiceConn, err := grpc.Dial("localhost:8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	authServiceConn, err := grpc.Dial("auth-service:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatal("can't dial user service: ", err)
 	}

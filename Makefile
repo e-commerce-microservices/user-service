@@ -20,4 +20,9 @@ protogen:
 sqlcgen:
 	sqlc generate
 
+dockerbuild:
+	docker build -t ngoctd/ecommerce-user:latest .
+dockerpush:
+	docker push ngoctd/ecommerce-user
+
 .PHONY: migratecreate migrateup migratedown migrateforce protogen
