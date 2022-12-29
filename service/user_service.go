@@ -81,7 +81,7 @@ func (user *UserService) GetMe(ctx context.Context, req *empty.Empty) (*pb.User,
 }
 
 // SupplierRegister update user role to supplier (if user is customer)
-func (user *UserService) SupplierRegister(ctx context.Context, req *pb.SupplierRegisterRequest) (*pb.GeneralResponse, error) {
+func (user *UserService) SupplierRegister(ctx context.Context, _ *empty.Empty) (*pb.GeneralResponse, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if ok {
 		ctx = metadata.NewOutgoingContext(ctx, md)
