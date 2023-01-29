@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -17,6 +18,7 @@ type userRepository interface {
 	CreateUser(context.Context, repository.CreateUserParams) error
 	GetUserByEmail(ctx context.Context, email string) (repository.User, error)
 	RegisterSupplier(ctx context.Context, id int64) error
+	GetUserByID(ctx context.Context, id int64) (repository.User, error)
 }
 
 // UserService implement grpc UserServiceServer
@@ -73,11 +75,50 @@ func (user *UserService) GetUserByEmail(ctx context.Context, req *pb.GetUserByEm
 	}, nil
 }
 
+// GetUserById ...
+func (user *UserService) GetUserById(ctx context.Context, req *pb.GetUserByIDRequest) (*pb.User, error) {
+	tmp, err := user.userStore.GetUserByID(ctx, req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.NotFound, err.Error())
+	}
+
+	return &pb.User{
+		Id:           tmp.ID,
+		Email:        tmp.Email,
+		Role:         pb.UserRole(pb.UserRole_value[string(tmp.Role)]),
+		ActiveStatus: tmp.ActiveStatus,
+	}, nil
+}
+
 // GetMe query user in db by id parsed from header
 func (user *UserService) GetMe(ctx context.Context, req *empty.Empty) (*pb.User, error) {
 	// authenticated
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
 
-	return nil, nil
+	claims, err := user.authClient.GetUserClaims(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := strconv.ParseInt(claims.Id, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	me, err := user.userStore.GetUserByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.User{
+		Id:           id,
+		Email:        me.Email,
+		Role:         claims.GetUserRole(),
+		ActiveStatus: me.ActiveStatus,
+	}, nil
 }
 
 // SupplierRegister update user role to supplier (if user is customer)
@@ -92,7 +133,7 @@ func (user *UserService) SupplierRegister(ctx context.Context, _ *empty.Empty) (
 		return nil, err
 	}
 	if claims.UserRole == pb.UserRole_supplier || claims.UserRole == pb.UserRole_admin {
-		return nil, status.Error(codes.AlreadyExists, "already registered")
+		return nil, errors.New("Đăng kí không thành công, bạn đã đăng kí từ trước đó rồi")
 	}
 
 	id, err := strconv.ParseInt(claims.GetId(), 10, 64)
@@ -106,7 +147,7 @@ func (user *UserService) SupplierRegister(ctx context.Context, _ *empty.Empty) (
 	}
 
 	return &pb.GeneralResponse{
-		Message: "successfully, now you are supplier",
+		Message: "Đăng kí thành công, bạn đã trở thành người bán hàng",
 	}, nil
 }
 

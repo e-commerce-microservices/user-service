@@ -13,7 +13,6 @@ import (
 	"github.com/joho/godotenv"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/reflection"
 
 	// postgres driver
 	_ "github.com/lib/pq"
@@ -53,9 +52,6 @@ func main() {
 	userService := service.NewUserService(userQueries, authClient)
 	// register user service
 	pb.RegisterUserServiceServer(grpcServer, userService)
-
-	// reflection service
-	reflection.Register(grpcServer)
 
 	// listen and serve
 	listener, err := net.Listen("tcp", ":8080")
