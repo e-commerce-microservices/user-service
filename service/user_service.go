@@ -2,9 +2,13 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/e-commerce-microservices/user-service/pb"
 	"github.com/e-commerce-microservices/user-service/repository"
@@ -14,28 +18,103 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type userRepository interface {
-	CreateUser(context.Context, repository.CreateUserParams) error
-	GetUserByEmail(ctx context.Context, email string) (repository.User, error)
-	RegisterSupplier(ctx context.Context, id int64) error
-	GetUserByID(ctx context.Context, id int64) (repository.User, error)
-}
-
 // UserService implement grpc UserServiceServer
 type UserService struct {
-	userStore  userRepository
+	userStore  *repository.Queries
 	authClient pb.AuthServiceClient
 	pb.UnimplementedUserServiceServer
 }
 
 // NewUserService creates a new UserService instance
-func NewUserService(userStore userRepository, authClient pb.AuthServiceClient) *UserService {
+func NewUserService(userStore *repository.Queries, authClient pb.AuthServiceClient) *UserService {
 	service := &UserService{
 		userStore:  userStore,
 		authClient: authClient,
 	}
 
 	return service
+}
+
+// GetListUser ...
+func (user *UserService) GetListUser(ctx context.Context, req *pb.GetListUserRequest) (*pb.GetListUserResponse, error) {
+	result := make([]*pb.User, 0)
+	wg := sync.WaitGroup{}
+	wg.Add(len(req.ListUserId))
+	for _, id := range req.ListUserId {
+		go func(id int64) {
+			defer wg.Done()
+			user, err := user.userStore.GetUserByID(ctx, id)
+			log.Println("user: ", user, err)
+			if err == nil {
+				result = append(result, &pb.User{
+					Id:    id,
+					Email: user.Email,
+					Profile: &pb.UserProfile{
+						UserName: user.UserName,
+						Phone:    "",
+						Avatar:   "",
+					},
+					Address: []*pb.UserAddress{},
+				})
+			}
+		}(id)
+	}
+
+	wg.Wait()
+	return &pb.GetListUserResponse{
+		ListUser: result,
+	}, nil
+}
+func isVietnamesePhoneNumber(number string) bool {
+	// return ``.test(number)
+	ok, _ := regexp.MatchString("/(03|05|07|08|09|01[2|6|8|9])+([0-9]{8})\b/", number)
+	return ok
+}
+
+func (user *UserService) UpdateProfile(ctx context.Context, req *pb.UserProfile) (*pb.GeneralResponse, error) {
+	// if len(req.GetPhone()) > 0 && !isVietnamesePhoneNumber(req.GetPhone()) {
+	// 	return nil, errors.New("Định dạng số điện thoại không đúng")
+	// }
+	// authenticated
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
+
+	claims, err := user.authClient.GetUserClaims(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := strconv.ParseInt(claims.Id, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	err = user.userStore.UpdateUserName(ctx, repository.UpdateUserNameParams{
+		UserName: req.GetUserName(),
+		Phone: sql.NullString{
+			String: req.GetPhone(),
+			Valid:  true,
+		},
+		ID: id,
+		Address: sql.NullString{
+			String: req.GetAddress(),
+			Valid:  true,
+		},
+		Note: sql.NullString{
+			String: req.GetNote(),
+			Valid:  true,
+		},
+	})
+	if err != nil {
+		return nil, errors.New("Cập nhật không thành công")
+	}
+
+	return &pb.GeneralResponse{
+		Message:    "Cập nhật thông tin thành công",
+		StatusCode: 0,
+	}, nil
 }
 
 // CreateUser creates new user in db if it isn't exist
@@ -87,6 +166,16 @@ func (user *UserService) GetUserById(ctx context.Context, req *pb.GetUserByIDReq
 		Email:        tmp.Email,
 		Role:         pb.UserRole(pb.UserRole_value[string(tmp.Role)]),
 		ActiveStatus: tmp.ActiveStatus,
+		Profile: &pb.UserProfile{
+			UserName: tmp.UserName,
+			Phone:    tmp.Phone.String,
+			Avatar:   "",
+		},
+		Address: []*pb.UserAddress{{
+			Address: tmp.Address.String,
+			Note:    tmp.Note.String,
+		}},
+		Gender: tmp.Gender.String,
 	}, nil
 }
 
@@ -108,16 +197,26 @@ func (user *UserService) GetMe(ctx context.Context, req *empty.Empty) (*pb.User,
 		return nil, err
 	}
 
-	me, err := user.userStore.GetUserByID(ctx, id)
+	tmp, err := user.userStore.GetUserByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.NotFound, err.Error())
 	}
 
 	return &pb.User{
-		Id:           id,
-		Email:        me.Email,
-		Role:         claims.GetUserRole(),
-		ActiveStatus: me.ActiveStatus,
+		Id:           tmp.ID,
+		Email:        tmp.Email,
+		Role:         pb.UserRole(pb.UserRole_value[string(tmp.Role)]),
+		ActiveStatus: tmp.ActiveStatus,
+		Profile: &pb.UserProfile{
+			UserName: tmp.UserName,
+			Phone:    tmp.Phone.String,
+			Avatar:   "",
+		},
+		Address: []*pb.UserAddress{{
+			Address: tmp.Address.String,
+			Note:    tmp.Note.String,
+		}},
+		Gender: tmp.Gender.String,
 	}, nil
 }
 

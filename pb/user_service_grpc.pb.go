@@ -30,6 +30,7 @@ type UserServiceClient interface {
 	GetMe(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*User, error)
 	GetUserByEmail(ctx context.Context, in *GetUserByEmailRequest, opts ...grpc.CallOption) (*User, error)
 	GetUserById(ctx context.Context, in *GetUserByIDRequest, opts ...grpc.CallOption) (*User, error)
+	GetListUser(ctx context.Context, in *GetListUserRequest, opts ...grpc.CallOption) (*GetListUserResponse, error)
 	UpdateEmail(ctx context.Context, in *UpdateEmailRequest, opts ...grpc.CallOption) (*GeneralResponse, error)
 	UpdateProfile(ctx context.Context, in *UserProfile, opts ...grpc.CallOption) (*GeneralResponse, error)
 	AddAddress(ctx context.Context, in *UserAddress, opts ...grpc.CallOption) (*GeneralResponse, error)
@@ -105,6 +106,15 @@ func (c *userServiceClient) GetUserByEmail(ctx context.Context, in *GetUserByEma
 func (c *userServiceClient) GetUserById(ctx context.Context, in *GetUserByIDRequest, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
 	err := c.cc.Invoke(ctx, "/ecommerce.UserService/GetUserById", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetListUser(ctx context.Context, in *GetListUserRequest, opts ...grpc.CallOption) (*GetListUserResponse, error) {
+	out := new(GetListUserResponse)
+	err := c.cc.Invoke(ctx, "/ecommerce.UserService/GetListUser", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +204,7 @@ type UserServiceServer interface {
 	GetMe(context.Context, *empty.Empty) (*User, error)
 	GetUserByEmail(context.Context, *GetUserByEmailRequest) (*User, error)
 	GetUserById(context.Context, *GetUserByIDRequest) (*User, error)
+	GetListUser(context.Context, *GetListUserRequest) (*GetListUserResponse, error)
 	UpdateEmail(context.Context, *UpdateEmailRequest) (*GeneralResponse, error)
 	UpdateProfile(context.Context, *UserProfile) (*GeneralResponse, error)
 	AddAddress(context.Context, *UserAddress) (*GeneralResponse, error)
@@ -229,6 +240,9 @@ func (UnimplementedUserServiceServer) GetUserByEmail(context.Context, *GetUserBy
 }
 func (UnimplementedUserServiceServer) GetUserById(context.Context, *GetUserByIDRequest) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserById not implemented")
+}
+func (UnimplementedUserServiceServer) GetListUser(context.Context, *GetListUserRequest) (*GetListUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetListUser not implemented")
 }
 func (UnimplementedUserServiceServer) UpdateEmail(context.Context, *UpdateEmailRequest) (*GeneralResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateEmail not implemented")
@@ -389,6 +403,24 @@ func _UserService_GetUserById_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).GetUserById(ctx, req.(*GetUserByIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetListUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetListUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetListUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ecommerce.UserService/GetListUser",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetListUser(ctx, req.(*GetListUserRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -573,6 +605,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_GetUserById_Handler,
 		},
 		{
+			MethodName: "GetListUser",
+			Handler:    _UserService_GetListUser_Handler,
+		},
+		{
 			MethodName: "UpdateEmail",
 			Handler:    _UserService_UpdateEmail_Handler,
 		},
@@ -603,128 +639,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SupplierReport",
 			Handler:    _UserService_SupplierReport_Handler,
-		},
-	},
-	Streams:  []grpc.StreamDesc{},
-	Metadata: "user_service.proto",
-}
-
-// AdminServiceClient is the client API for AdminService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type AdminServiceClient interface {
-	BlockUser(ctx context.Context, in *BlockUserRequest, opts ...grpc.CallOption) (*GeneralResponse, error)
-	GetAllUser(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*GetAllUserResponse, error)
-}
-
-type adminServiceClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewAdminServiceClient(cc grpc.ClientConnInterface) AdminServiceClient {
-	return &adminServiceClient{cc}
-}
-
-func (c *adminServiceClient) BlockUser(ctx context.Context, in *BlockUserRequest, opts ...grpc.CallOption) (*GeneralResponse, error) {
-	out := new(GeneralResponse)
-	err := c.cc.Invoke(ctx, "/ecommerce.AdminService/BlockUser", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *adminServiceClient) GetAllUser(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*GetAllUserResponse, error) {
-	out := new(GetAllUserResponse)
-	err := c.cc.Invoke(ctx, "/ecommerce.AdminService/GetAllUser", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// AdminServiceServer is the server API for AdminService service.
-// All implementations must embed UnimplementedAdminServiceServer
-// for forward compatibility
-type AdminServiceServer interface {
-	BlockUser(context.Context, *BlockUserRequest) (*GeneralResponse, error)
-	GetAllUser(context.Context, *empty.Empty) (*GetAllUserResponse, error)
-	mustEmbedUnimplementedAdminServiceServer()
-}
-
-// UnimplementedAdminServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedAdminServiceServer struct {
-}
-
-func (UnimplementedAdminServiceServer) BlockUser(context.Context, *BlockUserRequest) (*GeneralResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BlockUser not implemented")
-}
-func (UnimplementedAdminServiceServer) GetAllUser(context.Context, *empty.Empty) (*GetAllUserResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAllUser not implemented")
-}
-func (UnimplementedAdminServiceServer) mustEmbedUnimplementedAdminServiceServer() {}
-
-// UnsafeAdminServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to AdminServiceServer will
-// result in compilation errors.
-type UnsafeAdminServiceServer interface {
-	mustEmbedUnimplementedAdminServiceServer()
-}
-
-func RegisterAdminServiceServer(s grpc.ServiceRegistrar, srv AdminServiceServer) {
-	s.RegisterService(&AdminService_ServiceDesc, srv)
-}
-
-func _AdminService_BlockUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BlockUserRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AdminServiceServer).BlockUser(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/ecommerce.AdminService/BlockUser",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AdminServiceServer).BlockUser(ctx, req.(*BlockUserRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AdminService_GetAllUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AdminServiceServer).GetAllUser(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/ecommerce.AdminService/GetAllUser",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AdminServiceServer).GetAllUser(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-// AdminService_ServiceDesc is the grpc.ServiceDesc for AdminService service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var AdminService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "ecommerce.AdminService",
-	HandlerType: (*AdminServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "BlockUser",
-			Handler:    _AdminService_BlockUser_Handler,
-		},
-		{
-			MethodName: "GetAllUser",
-			Handler:    _AdminService_GetAllUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
